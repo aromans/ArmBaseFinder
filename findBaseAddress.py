@@ -40,7 +40,7 @@ with open('./xb6.bin', 'rb') as f:
 size = len(_bin)
 offset = 0
 
-memory = []
+memory = set()
 
 # Collect LDR addresses 
 while (offset < size):
@@ -51,7 +51,7 @@ while (offset < size):
         pc = offset + 8
         immed_12 = format(_bytes[1][0] + _bytes[0])
         address = hex((int(hex(pc), 16) & 0xfffffffc) + int(immed_12, 16))
-        memory.append(''.join(reversed(getBytes(_bin, int(address, 16)))))
+        memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
     offset += 4
 
 offset = 0
@@ -65,7 +65,7 @@ while (offset < size):
         pc = offset + 4
         immed_8 = format(_bytes[0])
         address = hex((int(hex(pc), 16) & 0xfffffffc) + (int(immed_8, 16) * 4))
-        memory.append(''.join(reversed(getBytes(_bin, int(address, 16)))))
+        memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
     offset += 2
 
 # Get binary function offsets from Ghidra plugin
