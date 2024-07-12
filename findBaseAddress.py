@@ -19,6 +19,26 @@ def getBytes(_bin, offset, thumb=False):
         return [b1, b2]
     return [b1, b2, b3, b4]
 
+def is_armv7_func_start(_bin, offset):
+    prologues = {
+        b'\x2d\xe9',
+        b'\x4d\xe2',
+        b'\x2d\xe9'
+    }
+
+    instruction = _bin[offset:offset + 2]
+
+    if (instruction == b''):
+        return True
+    return False
+
+    #print(instruction)
+
+    #for prologue in prologues:
+    #    if instruction.startswith(prologue):
+    #        return True
+    #return False
+
 def createMatrix(rows, cols, fill_value=0):
     return [[fill_value for _ in range(cols)] for _ in range(rows)]
 
@@ -43,16 +63,16 @@ offset = 0
 memory = set()
 
 # Collect LDR addresses 
-while (offset < size):
-    offset_2 = format(_bin[offset + 2] & 0xff, '02X')
-    offset_3 = format(_bin[offset + 3] & 0xff, '02X')
-    if (offset_2 == "9F" and offset_3 == "E5"):
-        _bytes = getBytes(_bin, offset)
-        pc = offset + 8
-        immed_12 = format(_bytes[1][0] + _bytes[0])
-        address = hex((int(hex(pc), 16) & 0xfffffffc) + int(immed_12, 16))
-        memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
-    offset += 4
+#while (offset < size):
+#    offset_2 = format(_bin[offset + 2] & 0xff, '02X')
+#    offset_3 = format(_bin[offset + 3] & 0xff, '02X')
+#    if (offset_2 == "9F" and offset_3 == "E5"):
+#        _bytes = getBytes(_bin, offset)
+#        pc = offset + 8
+#        immed_12 = format(_bytes[1][0] + _bytes[0])
+#        address = hex((int(hex(pc), 16) & 0xfffffffc) + int(immed_12, 16))
+#        memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
+#    offset += 4
 
 offset = 0
 
@@ -65,8 +85,15 @@ while (offset < size):
         pc = offset + 4
         immed_8 = format(_bytes[0])
         address = hex((int(hex(pc), 16) & 0xfffffffc) + (int(immed_8, 16) * 4))
-        memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
+        rd = ''.join(reversed(getBytes(_bin, int(address, 16))))
+        if (f"{rd[:2]}{rd[2:4]}" == "1367"):
+            offset += 2
+            continue    
+        memory.add(rd)
+        #memory.add(''.join(reversed(getBytes(_bin, int(address, 16)))))
     offset += 2
+
+print("Reading Offsets . . . ")
 
 # Get binary function offsets from Ghidra plugin
 func_content = None
@@ -79,11 +106,15 @@ file_size = size
 M = createMatrix(len(ldr), len(offsets), -1)
 Max = 0xffffffff - file_size
 
+print("Enumerating differences . . . ")
+
 for j, a in enumerate(ldr):
     for i, o in enumerate(offsets):
         diff = int(a, 16) - int(o, 16)
         if (0 < diff and diff < Max):
             M[j][i] = diff
+
+print("Calculating results . . . ")
 
 occurences = countOccurences(M)
 sorted_occ = dict(sortOccurencesDesc(occurences))
